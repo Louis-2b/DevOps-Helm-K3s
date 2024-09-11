@@ -1,0 +1,10 @@
+appName: solar-system-stag
+
+namespace: staging
+
+ingress:
+  name: nginx-ingress-stag
+
+image:
+  name: 192.168.222.60:8083/tubie 
+  tag: 53

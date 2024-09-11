@@ -1,0 +1,182 @@
+version: "3"
+
+env:
+  BORDER: double
+  BORDER_FOREGROUND: "212"
+  PADDING: "1 1"
+  MARGIN: "1 1"
+
+
+# Prérequis:
+# - Machine virtuelle exécutant Ubuntu 24.04 LTS ou une version plus récente...
+
+
+tasks:
+  01-Mettre-à-jour:
+    desc: "Mettre à jour le référentiel de packages et mettre à niveau les packages"
+    cmds:
+      - sudo apt update && sudo apt upgrade -y
+
+  02-Créer-cluster-kubernetes:
+    desc: "Créer un cluster Kubernetes"
+    cmds:
+      - curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="server" sh -s - --disable traefik
+
+  03-Configurer-Kubernetes:
+    desc: "Configurer l'accès au cluster Kubernetes"
+    cmds:
+      - mkdir ~/.kube
+      - sudo cp /etc/rancher/k3s/k3s.yaml ~/.kube/config
+      - sudo chown helm:helm ~/.kube/config
+      - chmod 400 ~/.kube/config
+
+
+### Helm installation      
+  04-Exporter-Kubeconfig:
+    desc: "Définir et exporter la variable d'environnement KUBECONFIG"
+    cmds:
+      - source ./export-kubeconfig.sh
+      - echo $KUBECONFIG
+      - kubectl get nodes
+
+  05-Récupérer-script-installation:  
+    desc: "Récupération du script d'installation"
+    cmds:
+      - curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3
+
+  06-Donner-Droits-exécution:
+    desc: "Attribuons les droits d'exécution"
+    cmds:
+      - chmod 700 get_helm.sh
+
+  07-Télécharger-helm:
+    desc: "Téléchargeons Helm"
+    cmds:
+      - ./get_helm.sh 
+
+  08-Vérifier-version:
+    desc: "Vérifions la version"
+    cmds:
+      - helm version    
+
+### Installation de ingress-controller avec helm
+  05-Ajouter-repo:
+    desc: "Ajouter le dépôt Helm pour NGINX Ingress Controller"
+    cmds:
+      - helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+      - helm repo update
+
+  06-Installer-ingress-controller:
+    desc: "Installer NGINX Ingress Controller avec Helm" 
+    cmds:
+      - helm upgrade --install ingress-nginx ingress-nginx --repo https://kubernetes.github.io/ingress-nginx --namespace ingress-nginx --create-namespace  
+
+  07-Attendre-Contrôleur-NGINX:
+    desc: "Attendre que le contrôleur NGINX Ingress soit prêt"
+    cmds:
+      - kubectl wait --namespace ingress-nginx --for=condition=ready pod --selector=app.kubernetes.io/component=controller --timeout=120s 
+
+  08-Verifier-installation:     
+    desc: "Vérifier l'installation des pods Ingress NGINX"
+    cmds:
+      - kubectl -n ingress-nginx get all   
+
+  09-Désinstaller-contrôleur-nginx-ingress:
+    desc: "Désinstaller le contrôleur nginx-ingress"
+    cmds:
+      - helm uninstall ingress-nginx --namespace ingress-nginx
+
+
+### Configuration du registre privé k3s (si nécessaire)
+  10-Créer-fichier:
+    desc: "Crée ou modifie le fichier registries.yaml"
+    cmds:
+      - | 
+        sudo sh -c 'cat <<EOF > /etc/rancher/k3s/registries.yaml
+        
+        mirrors:
+          "192.168.222.60:8083":
+            endpoint:
+              - "http://192.168.222.60:8083"
+              
+        EOF' 
+      - echo "Fichier /etc/rancher/k3s/registries.yaml créé ou modifié avec les configurations du registre."         
+# N'hesitez pas de vérifier le fichier et bien l'ajuster si possible ... 
+
+  11-Redémarer-k3s:
+    desc: "Redémarre K3s pour appliquer la nouvelle configuration du registre"
+    cmds:
+      - sudo systemctl restart k3s
+      - sudo systemctl status k3s
+      - echo "K3s redémarré pour appliquer la nouvelle configuration du registre."
+
+  12-Cpnfigurer-registre:
+    desc: "Configurer les registres Docker non sécurisés"
+    cmds:
+      - |  
+        sudo sh -c 'cat <<EOF > /etc/docker/daemon.json  
+        {
+          "insecure-registries": [
+            "192.168.222.60:8082",
+            "192.168.222.60:8083"
+          ]
+        }
+
+        EOF'
+
+  13-Redémarrer-docker:
+    desc: "Redémarrer le service Docker pour appliquer les changements"
+    cmds:
+      - sudo systemctl restart docker
+      - sudo systemctl status docker   
+
+
+### environnement development
+  14-Créer-secret-authentification-Nexus-dev:
+    desc: "Création d'un secret d'authentification au registre privé nexus"
+    cmds:
+      -  kubectl create secret docker-registry nexus-secret --docker-server 192.168.222.60:8083 --docker-username admin --docker-password admin --namespace development
+
+  15-Créer-secret-authentification-BD-dev:
+    desc: "Création un secret d'authentification à la base de donnée"
+    cmds:
+      - kubectl create secret generic mongo-db-creds --from-literal=MONGO_URI="mongodb+srv://supercluster.d83jj.mongodb.net/superData" --from-literal=MONGO_USERNAME="superuser" --from-literal=MONGO_PASSWORD="SuperPassword" --namespace development 
+
+
+### environnement staging
+  16-Créer-secret-authentification-Nexus-stag:
+    desc: "Création d'un secret d'authentification au registre privé nexus"
+    cmds:
+      -  kubectl create secret docker-registry nexus-secret --docker-server 192.168.222.60:8083 --docker-username admin --docker-password Adminuser --namespace staging
+
+  17-Créer-secret-authentification-BD-stag:
+    desc: "Création un secret d'authentification à la base de donnée"
+    cmds:
+      - kubectl create secret generic mongo-db-creds --from-literal=MONGO_URI="mongodb+srv://supercluster.d83jj.mongodb.net/superData" --from-literal=MONGO_USERNAME="superuser" --from-literal=MONGO_PASSWORD="SuperPassword" --namespace staging 
+
+  18-Vérifier-logs-pods:
+    desc: "Vérification des logs du pods pour voir si tout fonctionne correctement"
+    cmds:
+      - kubectl logs < nom du pod > 
+
+  19-:Obtenir-object-cluster:
+    desc: "Obtenir tous les objets Kubernetes"
+    cmds:
+      - kubectl get all      
+
+  20-Trouver-addressIP:
+    desc: "Trouvons l'adresse IP d'un nœud du cluster"  
+    cmds:
+      - kubectl get nodes -o wide  
+
+  21-Trouver-Ingress: 
+    desc: "Obtenir les informations sur les Ingress"
+    cmds:
+      - kubectl get ingress
+      - echo "si votre DNS ou fichier "hosts" est configuré pour résoudre "solar-system-dev" vers < 192.168.222.80 >"         
+
+  22-Créer-namespace:
+    desc: "Création des namespaces development et staging"
+    cmds:
+      - kubectl create namespace development
+      - kubectl create namespace staging
