@@ -1,0 +1,16 @@
+version: "3"
+
+env:
+  BORDER: double
+  BORDER_FOREGROUND: "212"
+  PADDING: "1 1"
+  MARGIN: "1 1"
+
+
+tasks:
+  01-Déployer-Vérifier-Configuration-Ingress:
+    desc: "Déployer et vérifier la configuration Ingress dans le namespace 'development"
+    cmds:
+      - kubectl apply -f ingress.yaml
+      - sleep 5                              # Pause pour permettre au système de traiter la configuration
+      - kubectl get ingress -n development

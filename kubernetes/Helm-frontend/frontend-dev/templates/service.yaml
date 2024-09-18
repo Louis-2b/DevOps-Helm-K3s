@@ -2,14 +2,14 @@ apiVersion: v1
 kind: Service
 metadata:
   labels:
-    app: {{ .Values.appName }}
-  name: {{ .Values.appName }} 
-  namespace: {{ .Values.namespace }}
+    app: frontend
+  name: frontend
+  namespace: development
 spec:
   ports:
   - port: 3000
     protocol: TCP
     targetPort: 3000
   selector:
-    app: {{ .Values.appName }}
+    app: frontend
   type: NodePort

@@ -180,3 +180,102 @@ tasks:
     cmds:
       - kubectl create namespace development
       - kubectl create namespace staging
+
+
+### Configuration de kubernetes sur le serveur prometheus
+### Installer Node_exporter sur le maître et le travailleur
+
+# Ajoutons Node_exporter sur Master et Worker pour surveiller les métriques 
+# Tout d’abord, créons un utilisateur système pour Node Exporter
+
+  23-Créer-utilisteur:
+    desc: "créer un utilisateur système"
+    cmds:
+      - sudo useradd --system --no-create-home --shell /bin/false node_exporter
+
+  24-Télécharger-Node-Exporter:
+    desc: "Téléchargeons le dernière version de Node Exporter"
+    cmds:    
+      - wget https://github.com/prometheus/node_exporter/releases/download/v1.8.2/node_exporter-1.8.2.linux-amd64.tar.gz
+
+  25-Extraire-fichier:
+    desc: " extraire tous les fichiers Node_Exporter de l’archive."
+    cmds:   
+      - tar -xvf node_exporter-1.8.2.linux-amd64.tar.gz
+      - sudo rm -rf node_exporter-1.8.2.linux-amd64.tar.gz  
+
+  26-Déplacer-binaire:
+    desc: "Déplacez le binaire vers /usr/local/bin."
+    cmds:
+      - sudo mv node_exporter-1.8.2.linux-amd64/node_exporter /usr/local/bin/ 
+
+  27-Supprimer-archive:
+    desc: "Nettoyez et supprimez l'archive node_exporter et un dossier." 
+    cmds:
+      - sudo rm -rf node_exporter*  
+
+  28-Vérifier-version:
+    desc: "Vérifiez que vous pouvez exécuter le binaire"
+    cmds:
+      - node_exporter --version   
+
+  29-créer-fichier-systemd:
+    desc: "créez un fichier d’unité systemd similaire"
+    cmds:
+      - |
+        sudo sh -c 'cat <<EOF > /etc/systemd/system/node_exporter.service
+        [Unit]
+        Description=Node Exporter
+        Wants=network-online.target
+        After=network-online.target
+
+        StartLimitIntervalSec=500
+        StartLimitBurst=5
+
+        [Service]
+        User=node_exporter
+        Group=node_exporter
+        Type=simple
+        Restart=on-failure
+        RestartSec=5s
+        ExecStart=/usr/local/bin/node_exporter \
+            --collector.logind
+
+        [Install]
+        WantedBy=multi-user.target
+
+        EOF' 
+
+  30-Demarrer-node-exporter:
+    desc: "démarrer automatiquement Node_Exporter après le redémarrage"
+    cmds:
+      - sudo systemctl enable node_exporter 
+
+  31-Démarrer-node-exporter:
+    desc: "Ensuite, démarrez simplement Node_Exporter."
+    cmds:
+      - sudo systemctl start node_exporter 
+
+  32-Vérifier-etat-Node-Esporter:
+    desc: "vérifier l'état de Node_Exporter"
+    cmds:
+      - sudo systemctl status node_exporter 
+
+  # Si vous rencontrez des problèmes, vérifiez les journaux avec journalctl
+  10-Vérifier-journaux:
+     desc: "Si vous rencontrez des problèmes, vérifiez les journaux avec journalctl"
+     cmds:
+       - journalctl -u node_exporter -f --no-pager 
+
+# Pour créer une cible statique, vous devez ajouter job_name avec static_configs.   
+
+# Ajouter ce bloc :
+#...
+# - job_name: node_export_masterk8s
+#   static_configs:
+#     - targets: ["<master-ip>:9100"]
+# - job_name: node_export_workerk8s
+#   static_configs:
+#     - targets: ["<worker-ip>:9100"]
+#...
+# a le fin du fichier /etc/prometheus/prometheus.yml                         

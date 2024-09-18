@@ -2,14 +2,14 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    app: {{ .Values.appName }}
-  name: {{ .Values.appName }}
-  namespace: {{ .Values.namespace }}
+    app: shopping-cart
+  name: shopping-cart
+  namespace: development
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: {{ .Values.appName }}
+      app: shopping-cart
   strategy:
     type: RollingUpdate       # Mise à jour continue
     rollingUpdate:
@@ -18,10 +18,10 @@ spec:
   template:
     metadata:
       labels:
-        app: {{ .Values.appName }}
+        app: shopping-cart
     spec:
       containers:
-      - name: {{ .Values.appName }}
+      - name: shopping-cart
         image: "{{ .Values.image.name }}:{{ .Values.image.tag }}"
         resources:
           requests:
@@ -32,11 +32,8 @@ spec:
             memory: 256Mi
         imagePullPolicy: Always
         ports:
-        - containerPort: 3000
+        - containerPort: 3002
           name: http
-          protocol: TCP
-        envFrom:
-        - secretRef:
-            name: mongo-db-creds  
+          protocol: TCP  
       imagePullSecrets:
       - name: nexus-secret      
