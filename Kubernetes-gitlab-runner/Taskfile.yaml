@@ -1,0 +1,70 @@
+version: "3"
+
+env:
+  BORDER: double
+  BORDER_FOREGROUND: "212"
+  PADDING: "1 1"
+  MARGIN: "1 1"
+
+### Configuration de GitLab Runner
+
+
+### Prérequis:
+# - Machine virtuelle exécutant Ubuntu 24.04 LTS ou une version plus récente...
+
+
+tasks:
+  01-Mettre-à-jour:
+    desc: "Mettre à jour le référentiel de packages"
+    cmds:
+      - sudo apt-get update
+
+  02-Ajouter-repo:
+    desc: "Ajoutons le repository Helm" 
+    cmds:
+      - helm repo add gitlab https://charts.gitlab.io  
+      - helm repo list
+
+  03-Créer-fichier-valeurs:
+    desc: "Créons le fichier de valeurs"
+    cmds:
+      - helm show values gitlab/gitlab-runner > gitlab-runner-chart-values.yaml 
+      - |
+        echo "
+        Le fichier 'gitlab-runner-chart-values.yaml' a été créé.
+        Veuillez l'éditer manuellement et modifier les valeurs suivantes
+
+        gitlabUrl: https://gitlab.com/
+
+        runnerRegistrationToken: "<le token récupéré ci-dessus>"
+
+        rbac:
+          create: true
+
+        metrics:
+          enabled: false
+          serviceMonitor:
+            enabled: false
+
+        runners:
+          config: |
+            [[runners]]
+              [runners.kubernetes]
+                namespace = "{{.Release.Namespace}}"
+                image = "ubuntu:24.04"
+          tags: "k3s-runner"
+          name: "k3s-runner"
+          allowPrivilegeEscalation: true
+          privileged: true
+        "   
+
+  03-Deployer-runner:
+    desc: "On peut déployer le Runner Gitlab"
+    cmds:
+      - helm install -f gitlab-runner-chart-values.yaml gitlab-runner gitlab/gitlab-runner 
+
+  04-Vérifier-pod:
+    desc: "vérifions le pod pour voir s'il a bien demarré"
+    cmds:
+      - kubectl get pod
+      - echo "Pour valider que Gitlab arrive bien à se connecter, retournez dans les paramètres ci/cd du groupe, ou rafraichissez la page, [expand] Runners et vous devriez voir apparaître votre runner"    
