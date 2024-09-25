@@ -63,7 +63,12 @@ tasks:
     cmds:
       - helm install -f gitlab-runner-chart-values.yaml gitlab-runner gitlab/gitlab-runner 
 
-  04-Vérifier-pod:
+  04-Mis-à-jour:
+    desc: "mettre à jour une release Helm déjà installée"
+    cmds:
+      - helm upgrade -f gitlab-runner-chart-values.yaml gitlab-runner gitlab/gitlab-runner   
+
+  05-Vérifier-pod:
     desc: "vérifions le pod pour voir s'il a bien demarré"
     cmds:
       - kubectl get pod
