@@ -1,0 +1,64 @@
+version: "3"
+
+env:
+  BORDER: double
+  BORDER_FOREGROUND: "212"
+  PADDING: "1 1"
+  MARGIN: "1 1"
+
+
+tasks:
+  01-Ajouter-repo-prometheus:
+    desc: "utiliser un helm chart pour ajouter le repo promotheus"
+    cmds:
+      - helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+      - helm repo update
+      - helm repo list
+
+  02-Créer-namespace:
+    desc: "Créer un namespace pour prometheus"
+    cmds:
+      - kubectl create namespace monitoring
+      - kubectl get namespaces
+  
+  03-Créer-username-and-password:
+    desc: "Créer un utilisateur et un mot de passe et l'ajouter dans un fichier"
+    cmds:
+      - echo -n 'adminuser' > ./admin-user
+      - cat admin-user
+      - echo -n 'p@ssword!' > ./admin-password
+      - cat admin-password
+
+  04-Créer-kubernetes-secret:
+    desc: "Créer un secret Kubernetes pour les informations d'identification de Grafana"
+    cmds:
+     - kubectl create secret generic grafana-admin-credentials --from-file=./admin-user --from-file=admin-password -n monitoring    
+  
+  05-Vérifier-secret:
+    desc: "Vérifier votre secret"
+    cmds:
+      - kubectl describe secret -n monitoring grafana-admin-credentials
+
+  05-Vérification-username-and-password:
+    desc: "Récupérer le secret 'grafana-admin-credentials' et décoder"
+    cmds:
+      - kubectl get secret -n monitoring grafana-admin-credentials -o jsonpath="{.data.admin-user}" | base64 --decode
+      - kubectl get secret -n monitoring grafana-admin-credentials -o jsonpath="{.data.admin-password}" | base64 --decode
+  
+  06-Supprimer-fichier-username-and-password:
+    desc: "Supprimer le fichier de nom d'utilisateur et de mot de passe du système de fichiers"
+    cmds:
+      - rm admin-user && rm admin-password 
+  
+  07-Créer-values-file:
+    desc: "Créer un values file pour contenir nos valeurs helm"
+    cmds:
+      - sudo vim values.yaml
+
+  06-Installer-prometheus:
+    desc: "Installer le stack Prometheus à l'aide de helm"
+    cmds:
+      - helm install -n monitoring prometheus prometheus-community/kube-prometheus-stack -f values.yaml
+
+# Si vous apportez des modifications à votre, < values.yaml > vous pouvez déployer ces modifications en exécutant
+      - helm upgrade -n monitoring prometheus prometheus-community/kube-prometheus-stack -f values.yaml
