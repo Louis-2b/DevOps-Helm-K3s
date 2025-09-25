@@ -212,28 +212,20 @@ sudo reboot
 ```
 
 
-## 10. Vérification de la nouvelle version
-
-```bash
-# Confirmer la version actuelle
-cat /etc/redhat-release
-
-# Vérifier la version du kernel
-uname -r
-
-# Vérifier les services
-systemctl status
-```
-
-
-## 11. Nettoyage post-migration
+## 10. Nettoyage post-migration
 
 ```bash
 # Supprimer les paquets leapp (plus nécessaires)
 sudo dnf remove -y leapp leapp-deps leapp-upgrade-el8toel9 leapp-upgrade-el8toel9-deps python3-leapp
 
-# Nettoyer les dépendances inutiles
-sudo dnf autoremove -y
+# Désactiver ou supprimer le dépôt EPEL Modular défaillant
+sudo dnf config-manager --disable epel-modular
+
+# Ou le supprimer complètement
+sudo rm -f /etc/yum.repos.d/epel-modular.repo
+
+# Nettoyer le cache
+sudo dnf clean all
 
 # Remettre SELinux en mode enforcing (s'il était en permissive)
 sudo setenforce 1
@@ -243,18 +235,33 @@ sudo sed -i 's/SELINUX=permissive/SELINUX=enforcing/' /etc/selinux/config
 sudo dnf update -y
 ```
 
-
-## 12. Vérifications importantes
-
-### Vérifier les services critiques
+## 11. Vérifications post-migration
 
 ```bash
-sudo systemctl status sshd
-sudo systemctl status NetworkManager
-sudo systemctl status firewalld
+# Vérifier la version (devrait afficher CentOS Stream 9)
+cat /etc/redhat-release
 
-# Vérifier les logs d'erreur
-sudo journalctl -p err -b
+# Essayer à nouveau la mise à jour maintenant
+sudo dnf update -y
+
+# Vérifier les dépôts actifs
+sudo dnf repolist --enabled
+
+# Nettoyer les dépendances inutiles
+sudo dnf autoremove -y
+```
+
+### Vérifications finales
+
+```bash
+# Vérifier la version kernel
+uname -r
+
+# Vérifier les services
+sudo systemctl status sshd NetworkManager firewalld
+
+# Vérifier SELinux
+getenforce
 
 # Vérifier l'espace disque
 df -h
