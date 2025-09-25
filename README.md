@@ -71,8 +71,8 @@ sudo dnf clean all
 sudo dnf makecache
 ```
 
-# Après ça, tous tes dépôts devraient être fonctionnels depuis le Vault.
-# Tu pourras installer leapp et lancer la migration vers CentOS Stream 9.
+Après ça, tous tes dépôts devraient être fonctionnels depuis le Vault.
+Tu pourras installer leapp et lancer la migration vers CentOS Stream 9.
 
 
 # Prérequis
