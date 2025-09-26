@@ -19,48 +19,44 @@ sudo cp -r /etc/yum.repos.d /etc/yum.repos.d.backup
 ### Configuration des nouveaux dépôts archivés
 
 ```bash
-cat /etc/yum.repos.d/CentOS-Stream-AppStream.repo
-
+sudo tee /etc/yum.repos.d/CentOS-Stream-AppStream.repo > /dev/null <<EOF
 [appstream]
 name=CentOS Stream 8 - AppStream
-#mirrorlist=http://mirrorlist.centos.org/?release=$stream&arch=$basearch&repo=AppStream&infra=$infra
-baseurl=http://vault.centos.org/8-stream/AppStream/$basearch/os/
+baseurl=https://vault.centos.org/8-stream/AppStream/\$basearch/os/
 gpgcheck=1
 enabled=1
 gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial
+EOF
 
 
-cat /etc/yum.repos.d/CentOS-Stream-BaseOS.repo
-
+sudo tee /etc/yum.repos.d/CentOS-Stream-BaseOS.repo > /dev/null <<EOF
 [baseos]
 name=CentOS Stream 8 - BaseOS
-#mirrorlist=http://mirrorlist.centos.org/?release=$stream&arch=$basearch&repo=BaseOS&infra=$infra
-baseurl=http://vault.centos.org/8-stream/BaseOS/$basearch/os/
+baseurl=https://vault.centos.org/8-stream/BaseOS/\$basearch/os/
 gpgcheck=1
 enabled=1
 gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial
+EOF
 
 
-cat /etc/yum.repos.d/CentOS-Stream-Extras-common.repo
-
+sudo tee /etc/yum.repos.d/CentOS-Stream-Extras-common.repo > /dev/null <<EOF
 [extras-common]
 name=CentOS Stream 8 - Extras common packages
-#mirrorlist=http://mirrorlist.centos.org/?release=$stream&arch=$basearch&repo=extras-extras-common
-baseurl=http://vault.centos.org/8-stream/extras/$basearch/extras-common/
+baseurl=https://vault.centos.org/8-stream/extras/\$basearch/os/
 gpgcheck=1
 enabled=1
 gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-SIG-Extras
+EOF
 
 
-cat /etc/yum.repos.d/CentOS-Stream-Extras.repo
-
+sudo tee /etc/yum.repos.d/CentOS-Stream-Extras.repo > /dev/null <<EOF
 [extras]
 name=CentOS Stream 8 - Extras
-# mirrorlist=http://mirrorlist.centos.org/?release=$stream&arch=$basearch&repo=extras&infra=$infra
-baseurl=http://vault.centos.org/8-stream/extras/$basearch/os/
+baseurl=https://vault.centos.org/8-stream/extras/\$basearch/os/
 gpgcheck=1
 enabled=1
 gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial
+EOF
 ```
 
 
@@ -125,7 +121,6 @@ sudo dnf copr enable evgeni/leapp
 sudo dnf install -y leapp leapp-upgrade-el8toel9
 ```
 
-
 ## 5. Résolution des problèmes connus avant la migration
 
 ```bash
@@ -172,6 +167,7 @@ baseurl=http://mirror.stream.centos.org/9-stream/AppStream/x86_64/os/
 enabled=1
 gpgcheck=1
 gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial
+EOF
 ```
 
 ## 7. Résolution des inhibiteurs (erreurs bloquantes)
@@ -198,6 +194,33 @@ EOF
 
 ```bash
 sudo leapp preupgrade
+
+# Sortie :
+
+============================================================
+                      REPORT OVERVIEW
+============================================================
+
+HIGH and MEDIUM severity reports:
+    1. GRUB2 core will be automatically updated during the upgrade
+    2. Leapp detected loaded kernel drivers which are no longer maintained in RHEL 9.
+    3. Packages not signed by Red Hat found on the system
+
+Reports summary:
+    Errors:                      0
+    Inhibitors:                  0
+    HIGH severity reports:       3
+    MEDIUM severity reports:     0
+    LOW severity reports:        3
+    INFO severity reports:       3
+
+Before continuing, review the full report below for details about discovered problems and possible remediation instructions:
+    A report has been generated at /var/log/leapp/leapp-report.txt
+    A report has been generated at /var/log/leapp/leapp-report.json
+
+============================================================
+                   END OF REPORT OVERVIEW
+============================================================
 ```
 
 ## 9. Exécution de la migration
@@ -207,10 +230,36 @@ sudo leapp preupgrade
 ```bash
 sudo leapp upgrade
 
+# Sortie :
+
+============================================================
+                      REPORT OVERVIEW
+============================================================
+
+HIGH and MEDIUM severity reports:
+    1. GRUB2 core will be automatically updated during the upgrade
+    2. Leapp detected loaded kernel drivers which are no longer maintained in RHEL 9.
+    3. Packages not signed by Red Hat found on the system
+
+Reports summary:
+    Errors:                      0
+    Inhibitors:                  0
+    HIGH severity reports:       3
+    MEDIUM severity reports:     0
+    LOW severity reports:        3
+    INFO severity reports:       3
+
+Before continuing, review the full report below for details about discovered problems and possible remediation instructions:
+    A report has been generated at /var/log/leapp/leapp-report.txt
+    A report has been generated at /var/log/leapp/leapp-report.json
+
+============================================================
+                   END OF REPORT OVERVIEW
+============================================================
+
 # Redémarrer
 sudo reboot
 ```
-
 
 ## 10. Nettoyage post-migration
 
@@ -230,9 +279,6 @@ sudo dnf clean all
 # Remettre SELinux en mode enforcing (s'il était en permissive)
 sudo setenforce 1
 sudo sed -i 's/SELINUX=permissive/SELINUX=enforcing/' /etc/selinux/config
-
-# Mise à jour complète du nouveau système
-sudo dnf update -y
 ```
 
 ## 11. Vérifications post-migration
@@ -240,6 +286,16 @@ sudo dnf update -y
 ```bash
 # Vérifier la version (devrait afficher CentOS Stream 9)
 cat /etc/redhat-release
+
+# Supprimer les anciens dépôts CentOS 8
+sudo rm -f /etc/yum.repos.d/CentOS-Stream-*.repo
+
+# Installer les dépôts officiels pour CentOS Stream 9
+sudo dnf install centos-stream-repos
+
+# Réinstaller EPEL pour CentOS 9
+sudo dnf remove epel-release epel-next-release
+sudo dnf install https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
 
 # Essayer à nouveau la mise à jour maintenant
 sudo dnf update -y
