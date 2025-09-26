@@ -1,24 +1,43 @@
-# Mise à niveau de "CentOS Stream 8" vers "CentOS Stream 9"
+# Guide de mise à niveau de **CentOS Stream 8** vers **CentOS Stream 9**
 
-**CentOS Stream 8** est en fin de vie depuis mai 2024.
-
-Les dépôts officiels de **CentOS Stream 8** ont été déplacés dans le **CentOS Vault (archive)**.
-Il faut éditer tes fichiers **.repo** pour pointer vers ces dépôts archivés.
+### Contexte important
+**CentOS Stream 8** est en fin de vie depuis mai 2024. Les dépôts officiels ont été déplacés vers le **CentOS Vault (archive)**. Cette procédure utilise l'outil **Leapp** pour effectuer une mise à niveau en place.
 
 
-## 1.	Sauvegarde tes anciens fichiers
+## Prérequis et préparation
 
-### Sauvegarde des fichiers de dépôts actuels
+### 1. Sauvegarde complète
+⚠️ CRITIQUE : Effectuez une sauvegarde complète de votre système avant de commencer.
+
+### 2. Vérification du système actuel
+```bash
+# Vérifier la version actuelle
+cat /etc/centos-release
+# Doit afficher : CentOS Stream release 8
+
+# Vérifier l'architecture
+uname -m
+
+# Vérifier l'espace disque disponible (minimum 5 GB libres)
+df -h /
+```
+
+
+## Configuration des dépôts CentOS Stream 8 (Vault)
+
+### 1. Sauvegarde des fichiers de dépôts actuels
 
 ```bash
 sudo cp -r /etc/yum.repos.d /etc/yum.repos.d.backup
 ```
 
-# 2. Préparation des dépôts CentOS Stream 8 (archive)
-
-### Configuration des nouveaux dépôts archivés
+### 2. Configuration des dépôts archivés
 
 ```bash
+# Supprimer les anciens fichiers de dépôts
+sudo rm -f /etc/yum.repos.d/CentOS-Stream-*.repo
+
+# Créer les nouveaux fichiers de dépôts pointant vers le Vault
 sudo tee /etc/yum.repos.d/CentOS-Stream-AppStream.repo > /dev/null <<EOF
 [appstream]
 name=CentOS Stream 8 - AppStream
@@ -27,7 +46,6 @@ gpgcheck=1
 enabled=1
 gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial
 EOF
-
 
 sudo tee /etc/yum.repos.d/CentOS-Stream-BaseOS.repo > /dev/null <<EOF
 [baseos]
@@ -38,7 +56,6 @@ enabled=1
 gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial
 EOF
 
-
 sudo tee /etc/yum.repos.d/CentOS-Stream-Extras-common.repo > /dev/null <<EOF
 [extras-common]
 name=CentOS Stream 8 - Extras common packages
@@ -47,7 +64,6 @@ gpgcheck=1
 enabled=1
 gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-SIG-Extras
 EOF
-
 
 sudo tee /etc/yum.repos.d/CentOS-Stream-Extras.repo > /dev/null <<EOF
 [extras]
@@ -59,41 +75,30 @@ gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial
 EOF
 ```
 
-
-### Nettoyage et mise à jour du cache
+### 3. Test des nouveaux dépôts
 
 ```bash
+# Nettoyer et reconstruire le cache
 sudo dnf clean all
 sudo dnf makecache
 ```
-
 Après ça, tous tes dépôts devraient être fonctionnels depuis le Vault.
 Tu pourras installer leapp et lancer la migration vers CentOS Stream 9.
 
 
-# Prérequis
-
-## 1. Vérifier votre système
-
-### Vérification de la version actuelle (Vérifiez que votre système est bien CentOS Stream 8)
-
-```bash
-cat /etc/centos-release
-
-# Doit afficher :
-CentOS Stream release 8
-```
-
 ### Mise à jour complète du système
 
 ```bash
+# Mise à jour complète
 sudo dnf update -y
+
+# Redémarrage obligatoire
 sudo reboot
 ```
 
-## 3. Préparation des modules et dépendances
+## Installation et configuration de Leapp
 
-### Désactivation des modules problématiques
+### 1. Installation des prérequis
 
 ```bash
 # Réinitialisation du module Python 3.6
@@ -106,45 +111,47 @@ sudo dnf module enable python38 -y
 # Installation de Python 3.8
 sudo dnf install -y python38 python3-pip
 
-# Installation d'EPEL et des dépendances nécessaires
-sudo dnf install -y epel-release
-sudo dnf install -y dnf-plugins-core
+# # Installation d'EPEL et des outils nécessaires
+sudo dnf install -y epel-release dnf-plugins-core
+
+# Activation du dépôt Copr pour Leapp
 sudo dnf copr enable evgeni/leapp
 ```
 
-## 4. Installation de Leapp et préparation de la migration
-
-### Installation de Leapp
+### 2. Installation de Leapp
 
 ```bash
 sudo dnf install -y leapp leapp-upgrade-el8toel9
 ```
 
-## 5. Résolution des problèmes connus avant la migration
+## Préparation de la migration
+
+### 1. Configuration SSH
 
 ```bash
 # Configuration SSH - désactivation du login root par mot de passe
 sudo sed -i 's/^PermitRootLogin.*/PermitRootLogin prohibit-password/' /etc/ssh/sshd_config
 sudo sed -i 's/^PermitRootLogin yes/PermitRootLogin prohibit-password/' /etc/ssh/sshd_config
 sudo systemctl restart sshd
-
-
-# Configuration de firewalld
-sudo sed -i 's/^AllowZoneDrifting=yes/#AllowZoneDrifting=yes/' /etc/firewalld/firewalld.conf
-sudo systemctl restart firewalld
-
-# Vérification et installation de VDO si nécessaire
-# Vérifier si VDO est utilisé
-sudo vdo status
-
-# Si aucun périphérique VDO n'est configuré, installer le paquet manquant :
-sudo dnf install -y vdo kmod-kvdo
-
-# Vérification des périphériques VDO
-sudo vdo status
 ```
 
-## 6. Configuration des dépôts CentOS Stream 9 pour la migration
+### 2. Configuration Firewalld
+
+```bash
+sudo sed -i 's/^AllowZoneDrifting=yes/#AllowZoneDrifting=yes/' /etc/firewalld/firewalld.conf
+sudo systemctl restart firewalld
+```
+
+### 3. Installation des dépendances VDO (si nécessaire)
+```bash
+# Vérifier si VDO est utilisé
+sudo vdo status 2>/dev/null || echo "VDO non configuré"
+
+# Installer les paquets VDO pour éviter les erreurs
+sudo dnf install -y vdo kmod-kvdo
+```
+
+### 4. Configuration du fichier de réponses Leapp
 
 ```bash
 # Création du fichier de dépôts pour la migration
@@ -168,7 +175,7 @@ gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial
 EOF
 ```
 
-## 7. Résolution des inhibiteurs (erreurs bloquantes)
+### 5. Résolution des inhibiteurs (erreurs bloquantes)
 
 ```bash
 sudo tee /var/log/leapp/answerfile > /dev/null <<'EOF'
@@ -186,82 +193,45 @@ confirm = False
 EOF
 ```
 
-## 8. Exécution de la vérification pré-migration
+## Exécution de la migration
 
-### Lancement de la vérification préalable
+### 1. Vérification pré-migration
 
 ```bash
+# Lancer la vérification préalable
 sudo leapp preupgrade
 
-# Sortie :
-
-============================================================
-                      REPORT OVERVIEW
-============================================================
-
-HIGH and MEDIUM severity reports:
-    1. GRUB2 core will be automatically updated during the upgrade
-    2. Leapp detected loaded kernel drivers which are no longer maintained in RHEL 9.
-    3. Packages not signed by Red Hat found on the system
-
-Reports summary:
-    Errors:                      0
-    Inhibitors:                  0
-    HIGH severity reports:       3
-    MEDIUM severity reports:     0
-    LOW severity reports:        3
-    INFO severity reports:       3
-
-Before continuing, review the full report below for details about discovered problems and possible remediation instructions:
-    A report has been generated at /var/log/leapp/leapp-report.txt
-    A report has been generated at /var/log/leapp/leapp-report.json
-
-============================================================
-                   END OF REPORT OVERVIEW
-============================================================
+# Examiner le rapport généré
+sudo cat /var/log/leapp/leapp-report.txt
 ```
 
-## 9. Exécution de la migration
+### 2. Résolution des inhibiteurs (si nécessaire)
+Si des inhibiteurs sont détectés, consultez le rapport et résolvez-les avant de continuer.
 
-### Effectuer une mise à niveau
+
+### 3. Lancement de la migration
 
 ```bash
+# Effectuer la mise à niveau
 sudo leapp upgrade
 
-# Sortie :
-
-============================================================
-                      REPORT OVERVIEW
-============================================================
-
-HIGH and MEDIUM severity reports:
-    1. GRUB2 core will be automatically updated during the upgrade
-    2. Leapp detected loaded kernel drivers which are no longer maintained in RHEL 9.
-    3. Packages not signed by Red Hat found on the system
-
-Reports summary:
-    Errors:                      0
-    Inhibitors:                  0
-    HIGH severity reports:       3
-    MEDIUM severity reports:     0
-    LOW severity reports:        3
-    INFO severity reports:       3
-
-Before continuing, review the full report below for details about discovered problems and possible remediation instructions:
-    A report has been generated at /var/log/leapp/leapp-report.txt
-    A report has been generated at /var/log/leapp/leapp-report.json
-
-============================================================
-                   END OF REPORT OVERVIEW
-============================================================
-```
-
-```bash
 # Redémarrer
 sudo reboot
+
+# Le système va redémarrer automatiquement plusieurs fois
+# La migration peut prendre 30-60 minutes selon la configuration
 ```
 
-## 10. Nettoyage post-migration
+
+
+
+
+
+
+
+
+
+### 3. Nettoyage du système
 
 ```bash
 # Supprimer les paquets leapp (plus nécessaires)
