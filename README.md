@@ -222,6 +222,19 @@ sudo reboot
 # La migration peut prendre 30-60 minutes selon la configuration
 ```
 
+## Vérifications et nettoyage post-migration
+
+### 1. Vérification de la migration
+
+```bash
+# Vérifier la nouvelle version
+cat /etc/redhat-release
+# Doit afficher : CentOS Stream release 9
+
+# Vérifier le kernel
+uname -r
+```
+
 
 
 
