@@ -73,7 +73,7 @@ Tu pourras installer leapp et lancer la migration vers CentOS Stream 9.
 
 # Prérequis
 
-## 1. Vérifiez que votre système
+## 1. Vérifier votre système
 
 ### Vérification de la version actuelle (Vérifiez que votre système est bien CentOS Stream 8)
 
