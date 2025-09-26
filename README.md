@@ -235,15 +235,6 @@ cat /etc/redhat-release
 uname -r
 ```
 
-
-
-
-
-
-
-
-
-
 ### 3. Nettoyage du système
 
 ```bash
@@ -264,12 +255,9 @@ sudo setenforce 1
 sudo sed -i 's/SELINUX=permissive/SELINUX=enforcing/' /etc/selinux/config
 ```
 
-## 11. Vérifications post-migration
+### 4. Configuration des dépôts CentOS Stream 9
 
 ```bash
-# Vérifier la version (devrait afficher CentOS Stream 9)
-cat /etc/redhat-release
-
 # Supprimer les anciens dépôts CentOS 8
 sudo rm -f /etc/yum.repos.d/CentOS-Stream-*.repo
 
@@ -280,23 +268,20 @@ sudo dnf install centos-stream-repos
 sudo dnf remove epel-release epel-next-release
 sudo dnf install https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
 
-# Essayer à nouveau la mise à jour maintenant
+# Essayer à nouveau une mise à jour maintenant
 sudo dnf update -y
-
-# Vérifier les dépôts actifs
-sudo dnf repolist --enabled
 
 # Nettoyer les dépendances inutiles
 sudo dnf autoremove -y
 ```
 
-### Vérifications finales
+### 5. Vérifications finales
 
 ```bash
-# Vérifier la version kernel
-uname -r
+# Vérifier les dépôts actifs
+sudo dnf repolist --enabled
 
-# Vérifier les services
+# Vérifier les services critiques
 sudo systemctl status sshd NetworkManager firewalld
 
 # Vérifier SELinux
