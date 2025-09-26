@@ -192,7 +192,7 @@ EOF
 
 ```bash
 sudo leapp preupgrade
-
+```
 # Sortie :
 
 ============================================================
@@ -219,7 +219,6 @@ Before continuing, review the full report below for details about discovered pro
 ============================================================
                    END OF REPORT OVERVIEW
 ============================================================
-```
 
 ## 9. Exécution de la migration
 
@@ -227,7 +226,7 @@ Before continuing, review the full report below for details about discovered pro
 
 ```bash
 sudo leapp upgrade
-
+```
 # Sortie :
 
 ============================================================
@@ -255,6 +254,7 @@ Before continuing, review the full report below for details about discovered pro
                    END OF REPORT OVERVIEW
 ============================================================
 
+```bash
 # Redémarrer
 sudo reboot
 ```
