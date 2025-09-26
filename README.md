@@ -124,7 +124,6 @@ sudo dnf install -y leapp leapp-upgrade-el8toel9
 
 ```bash
 # Configuration SSH - désactivation du login root par mot de passe
-
 sudo sed -i 's/^PermitRootLogin.*/PermitRootLogin prohibit-password/' /etc/ssh/sshd_config
 sudo sed -i 's/^PermitRootLogin yes/PermitRootLogin prohibit-password/' /etc/ssh/sshd_config
 sudo systemctl restart sshd
