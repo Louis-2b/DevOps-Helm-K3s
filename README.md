@@ -96,9 +96,8 @@ sudo reboot
 ### Désactivation des modules problématiques
 
 ```bash
-sudo dnf module disable python36 virt -y
-
 # Réinitialisation du module Python 3.6
+sudo dnf module disable python36 virt -y
 sudo dnf module reset python36 -y
 
 # Activation de Python 3.8
